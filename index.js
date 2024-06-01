@@ -13,7 +13,7 @@ app.get('/', (req, res) => {
 })
 
 
-const uri = `mongodb+srv://${process.env.USER_NAME}:${process.env.USER_PASS}@cluster0.mi2xoxt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+const uri = `mongodb+srv://${process.env.USER_DB}:${process.env.USER_PASS}@cluster0.mi2xoxt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -29,7 +29,11 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    const dataBasecollection = client.db('databaseCollection').collection('change')
+    const AllPeatsCategory = client.db('LafsePeats').collection('PeatsAllCategory')
+    app.get('/allCategory' , async (req,res)=>{
+      const result = await AllPeatsCategory.find().toArray()
+      res.send(result)
+    })
 
 
     // Send a ping to confirm a successful connection
