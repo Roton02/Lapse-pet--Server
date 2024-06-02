@@ -36,7 +36,7 @@ async function run() {
       const searchValue = req.query.search
       // console.log(req.query.search);
       options = {
-        sort: { date:  -1 },
+        sort: { date:  -1 }
       };
       const searchQuery = {$regex : searchValue , $options : 'i'}
       let query = {  };
@@ -58,12 +58,17 @@ async function run() {
       const data = req.body;
       const result = await AdoptedrequestedDB.insertOne(data)
       res.send(result)
-
+    })
+    app.post('/AddPet', async (req,res)=>{
+      const data = req.body;
+      const result = await AllPeatsCategoryDB.insertOne(data)
+      res.send(result)
     })
     // Campaign releted api 
     app.get('/campaignAllPeats', async (req,res) =>{
       // console.log('object');
-      const result = await campaignPeatsDB.find().toArray()
+      
+      const result = await campaignPeatsDB.find().sort({date: -1 } ).toArray()
       res.send(result)
     })
     app.get("/campaignAllPeats/:id", async (req, res) => {
