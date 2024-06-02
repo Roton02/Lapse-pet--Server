@@ -29,7 +29,9 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    const AllPeatsCategory = client.db('LafsePeats').collection('PeatsAllCategory')
+    const AllPeatsCategoryDB = client.db('LafsePeats').collection('PeatsAllCategory')
+    const AdoptedrequestedDB = client.db('LafsePeats').collection('Adoptedrequested')
+    const campaignPeatsDB = client.db('LafsePeats').collection('campaignPeats')
     app.get('/allCategory' , async (req,res)=>{
       const searchValue = req.query.search
       // console.log(req.query.search);
@@ -42,14 +44,33 @@ async function run() {
         query={...query , name:searchQuery }
       }
       // console.log(query);
-      const result = await AllPeatsCategory.find(query,options).toArray()
+      const result = await AllPeatsCategoryDB.find(query,options).toArray()
       res.send(result)
     })
     app.get("/allCategory/:id", async (req, res) => {
       const id = req.params.id;
       // console.log(id);
       const query = { _id: new ObjectId(id) };
-      const result = await AllPeatsCategory.findOne(query);
+      const result = await AllPeatsCategoryDB.findOne(query);
+      res.send(result);
+    });
+    app.post('/Adopted/request', async (req,res)=>{
+      const data = req.body;
+      const result = await AdoptedrequestedDB.insertOne(data)
+      res.send(result)
+
+    })
+    // Campaign releted api 
+    app.get('/campaignAllPeats', async (req,res) =>{
+      // console.log('object');
+      const result = await campaignPeatsDB.find().toArray()
+      res.send(result)
+    })
+    app.get("/campaignAllPeats/:id", async (req, res) => {
+      const id = req.params.id;
+      // console.log(id);
+      const query = { _id: new ObjectId(id) };
+      const result = await campaignPeatsDB.findOne(query);
       res.send(result);
     });
 
