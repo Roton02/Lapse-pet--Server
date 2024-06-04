@@ -54,22 +54,14 @@ async function run() {
       const result = await AllPeatsCategoryDB.findOne(query);
       res.send(result);
     });
+    // ReQuested Page 
     app.get('/Adopted/request/:email', async (req,res)=>{
       const email = req.params.email;
-      const query = {AddedEmail: email, requetsed:true}
+      const query = {AddedEmail: email, requetsed:true, adopted:false}
       const result = await AdoptedrequestedDB.find(query).toArray()
       res.send(result)
     })
-    app.delete('/Adopted/request/:id', async (req,res)=>{
-      const query = {_id: new ObjectId(req.params.id)}
-      const result = await AdoptedrequestedDB.deleteOne(query)
-      res.send(result)
-    })
-    app.post('/Adopted/request', async (req,res)=>{
-      const data = req.body;
-      const result = await AdoptedrequestedDB.insertOne(data)
-      res.send(result)
-    })
+
     app.patch('/adopted/requestedAccept/:id',async(req,res)=>{
       console.log('object');
       const id = req.params.id;
@@ -88,8 +80,21 @@ async function run() {
       // const result = await AdoptedrequestedDB.deleteOne(query)
       const update = await AdoptedrequestedDB.updateOne(query, updateAllCategory)
       const result = await AllPeatsCategoryDB.updateOne(query, updateRequest)
+      console.log(result);
       res.send(update)
     })
+
+    app.delete('/Adopted/request/:id', async (req,res)=>{
+      const query = {_id: new ObjectId(req.params.id)}
+      const result = await AdoptedrequestedDB.deleteOne(query)
+      res.send(result)
+    })
+    app.post('/Adopted/request', async (req,res)=>{
+      const data = req.body;
+      const result = await AdoptedrequestedDB.insertOne(data)
+      res.send(result)
+    })
+   
 
     // Dashborad releted api
     app.get('/myAdded/', async (req, res)=>{
@@ -112,10 +117,16 @@ async function run() {
       const query = {_id : new ObjectId(id)}
       const updateDoc = {
         $set: {
-          data
+          name:data.name,
+          age:data.age,
+          img:data.img,
+          type:data.type,
+          location:data.location,
+          desription:data.description,
+          desription2:data.description2
         }
       }
-      const result = await AllPeatsCategoryDB.patch(query,updateDoc)
+      const result = await AllPeatsCategoryDB.updateOne(query,updateDoc)
       res.send(result)
     })
     app.delete('/myAddedDelete/:id', async (req,res)=>{
