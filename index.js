@@ -39,7 +39,7 @@ async function run() {
         sort: { date:  -1 }
       };
       const searchQuery = {$regex : searchValue , $options : 'i'}
-      let query = {  };
+      let query = {adopted : false};
       if (searchValue) {
         query={...query , name:searchQuery }
       }
@@ -54,9 +54,75 @@ async function run() {
       const result = await AllPeatsCategoryDB.findOne(query);
       res.send(result);
     });
+    app.get('/Adopted/request/:email', async (req,res)=>{
+      const email = req.params.email;
+      const query = {AddedEmail: email, requetsed:true}
+      const result = await AdoptedrequestedDB.find(query).toArray()
+      res.send(result)
+    })
+    app.delete('/Adopted/request/:id', async (req,res)=>{
+      const query = {_id: new ObjectId(req.params.id)}
+      const result = await AdoptedrequestedDB.deleteOne(query)
+      res.send(result)
+    })
     app.post('/Adopted/request', async (req,res)=>{
       const data = req.body;
       const result = await AdoptedrequestedDB.insertOne(data)
+      res.send(result)
+    })
+    app.patch('adopted/requestedAccept/:id',async(req,res)=>{
+      console.log('object');
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      // console.log(id);
+      const updateAllCategory = {
+        $set: {
+          adopted:true
+        },
+      }
+      const updateRequest = {
+        $set: {
+          requetsed:false
+        },
+      }
+      // const result = await AdoptedrequestedDB.deleteOne(query)
+      const update = await AdoptedrequestedDB.updateOne(query, updateAllCategory)
+      const result = await AllPeatsCategoryDB.updateOne(query, updateRequest)
+      res.send(update)
+    })
+
+    // Dashborad releted api
+    app.get('/myAdded/', async (req, res)=>{
+      const id = req.query.id
+      const email = req.query.email
+      // console.log(email,id);
+      let query = {}
+      if(id){
+        query ={_id : new ObjectId(id)}
+      }
+      if (email) {
+         query = {'addedPerson.AddedPersonEmail': email}
+      }
+      const result = await AllPeatsCategoryDB.find(query).toArray()
+      res.send(result)
+    })
+    app.delete('/myAddedDelete/:id', async (req,res)=>{
+      const id = req.params.id;
+      const query = {_id : new ObjectId(id)}
+      const result = await AllPeatsCategoryDB.deleteOne(query)
+      res.send(result)
+    })
+    app.patch('/myAddedAdopt/:id', async (req,res)=>{
+      const id = req.params.id;
+      const query = {_id : new ObjectId(id)}
+      const updateDoc = {
+        $set: {
+          adopted:true
+        },
+      }
+      const requestDB = await AdoptedrequestedDB.updateOne(query, updateDoc)
+      console.log(requestDB);
+      const result = await AllPeatsCategoryDB.updateOne(query, updateDoc)
       res.send(result)
     })
     app.post('/AddPet', async (req,res)=>{
@@ -79,6 +145,7 @@ async function run() {
       res.send(result);
     });
 
+    
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
