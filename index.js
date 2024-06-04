@@ -70,7 +70,7 @@ async function run() {
       const result = await AdoptedrequestedDB.insertOne(data)
       res.send(result)
     })
-    app.patch('adopted/requestedAccept/:id',async(req,res)=>{
+    app.patch('/adopted/requestedAccept/:id',async(req,res)=>{
       console.log('object');
       const id = req.params.id;
       const query = {_id: new ObjectId(id)}
@@ -106,6 +106,18 @@ async function run() {
       const result = await AllPeatsCategoryDB.find(query).toArray()
       res.send(result)
     })
+    app.patch('/updateMyaddedPets/:id', async (req,res)=>{
+      const id = req.params.id;
+      const data = req.body;
+      const query = {_id : new ObjectId(id)}
+      const updateDoc = {
+        $set: {
+          data
+        }
+      }
+      const result = await AllPeatsCategoryDB.patch(query,updateDoc)
+      res.send(result)
+    })
     app.delete('/myAddedDelete/:id', async (req,res)=>{
       const id = req.params.id;
       const query = {_id : new ObjectId(id)}
@@ -120,7 +132,7 @@ async function run() {
           adopted:true
         },
       }
-      const requestDB = await AdoptedrequestedDB.updateOne(query, updateDoc)
+      const requestDB = await AdoptedrequestedDB.deleteOne(query)
       console.log(requestDB);
       const result = await AllPeatsCategoryDB.updateOne(query, updateDoc)
       res.send(result)
