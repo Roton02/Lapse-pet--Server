@@ -62,11 +62,16 @@ async function run() {
       res.send(result)
     })
 
-    app.patch('/adopted/requestedAccept/:id',async(req,res)=>{
+    app.patch('/adopted/requestedAccept/:id/:adoptId',async(req,res)=>{
       console.log('object');
       const id = req.params.id;
+      const id2 = req.params.adoptId
+      console.log(id,id2);
       const query = {_id: new ObjectId(id)}
+      const query2 = {_id: new ObjectId(id2)}
       // console.log(id);
+      const d = await AllPeatsCategoryDB.findOne(query2)
+      console.log({d});
       const updateAllCategory = {
         $set: {
           adopted:true
@@ -77,10 +82,9 @@ async function run() {
           requetsed:false
         },
       }
-      // const result = await AdoptedrequestedDB.deleteOne(query)
-      const update = await AdoptedrequestedDB.updateOne(query, updateAllCategory)
-      const result = await AllPeatsCategoryDB.updateOne(query, updateRequest)
+      const result = await AllPeatsCategoryDB.updateOne(query2,updateAllCategory )
       console.log(result);
+      const update = await AdoptedrequestedDB.updateOne(query, updateRequest)
       res.send(update)
     })
 
@@ -132,18 +136,20 @@ async function run() {
     app.delete('/myAddedDelete/:id', async (req,res)=>{
       const id = req.params.id;
       const query = {_id : new ObjectId(id)}
+      const deleteRequest = await AdoptedrequestedDB.deleteMany({id:id})
       const result = await AllPeatsCategoryDB.deleteOne(query)
       res.send(result)
     })
-    app.patch('/myAddedAdopt/:id', async (req,res)=>{
+    app.patch('/myAddedAdopt/:id/:petId', async (req,res)=>{
       const id = req.params.id;
+      const petId = req.params.petId;
       const query = {_id : new ObjectId(id)}
       const updateDoc = {
         $set: {
           adopted:true
         },
       }
-      const requestDB = await AdoptedrequestedDB.deleteOne(query)
+      const requestDB = await AdoptedrequestedDB.deleteMany({id:id})
       console.log(requestDB);
       const result = await AllPeatsCategoryDB.updateOne(query, updateDoc)
       res.send(result)
@@ -154,10 +160,12 @@ async function run() {
       res.send(result)
     })
     // Campaign releted api 
-    app.get('/campaignAllPeats', async (req,res) =>{
-      // console.log('object');
-      
-      const result = await campaignPeatsDB.find().sort({date: -1 } ).toArray()
+    app.get('/campaignAllPeats', async (req,res) =>{ 
+      const query = {pause:false}
+      options = {
+        sort: {date : -1 }
+      };
+      const result = await campaignPeatsDB.find(query,options).toArray()
       res.send(result)
     })
     app.get("/campaignAllPeats/:id", async (req, res) => {
@@ -167,7 +175,12 @@ async function run() {
       const result = await campaignPeatsDB.findOne(query);
       res.send(result);
     });
-
+    app.post('/Donation/campaign', async(req,res)=>{
+      const data = req.body;
+      console.log(data);
+      const result = await campaignPeatsDB.insertOne(data)
+      res.send(result)
+    })
     
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
