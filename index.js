@@ -69,9 +69,6 @@ async function run() {
       console.log(id,id2);
       const query = {_id: new ObjectId(id)}
       const query2 = {_id: new ObjectId(id2)}
-      // console.log(id);
-      const d = await AllPeatsCategoryDB.findOne(query2)
-      console.log({d});
       const updateAllCategory = {
         $set: {
           adopted:true
@@ -83,7 +80,7 @@ async function run() {
         },
       }
       const result = await AllPeatsCategoryDB.updateOne(query2,updateAllCategory )
-      console.log(result);
+      // console.log(result);
       const update = await AdoptedrequestedDB.updateOne(query, updateRequest)
       res.send(update)
     })
@@ -150,7 +147,7 @@ async function run() {
         },
       }
       const requestDB = await AdoptedrequestedDB.deleteMany({id:id})
-      console.log(requestDB);
+      // console.log(requestDB);
       const result = await AllPeatsCategoryDB.updateOne(query, updateDoc)
       res.send(result)
     })
@@ -166,6 +163,30 @@ async function run() {
         sort: {date : -1 }
       };
       const result = await campaignPeatsDB.find(query,options).toArray()
+      res.send(result)
+    })
+    app.patch('/myCampaignUpdate/:id',async (req,res)=>{
+      const updateId = req.params.id;
+      const Updatedata =req.body
+      console.log('id',updateId);
+      const query ={_id: new ObjectId(updateId)}
+      const updateDoc = {
+        $set: {
+          image:Updatedata.image,
+          date:Updatedata.date,
+          name:Updatedata.name,
+          maxDonation:Updatedata.maxDonation,
+          sortDescription:Updatedata.sortDescription,
+          longDescription:Updatedata.longDescription
+        }
+      }
+      const result = await campaignPeatsDB.updateOne(query,updateDoc)
+      res.send(result)
+    })
+    app.get('/myAddedCampaign/:email',async (req,res)=>{
+      const email = req.params.email;
+      const query = {userEmail: email}
+      const result = await campaignPeatsDB.find(query).toArray()
       res.send(result)
     })
     app.get("/campaignAllPeats/:id", async (req, res) => {
