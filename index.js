@@ -1,3 +1,4 @@
+const jwt = require('jsonwebtoken');
 const express = require('express')
 const app = express()
 const cors = require('cors');
@@ -29,9 +30,63 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+    const userCollection = client.db('LafsePeats').collection('users')
     const AllPeatsCategoryDB = client.db('LafsePeats').collection('PeatsAllCategory')
     const AdoptedrequestedDB = client.db('LafsePeats').collection('Adoptedrequested')
     const campaignPeatsDB = client.db('LafsePeats').collection('campaignPeats')
+
+    // jwt related api
+    app.post('/jwt', async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+      res.send({ token });
+    })
+
+    // middlewares 
+    const verifyToken = (req, res, next) => {
+      // console.log('inside verify token', req.headers.authorization);
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: 'unauthorized access' });
+      }
+      const token = req.headers.authorization.split(' ')[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: 'unauthorized access' })
+        }
+        req.decoded = decoded;
+        next();
+      })
+    }
+
+
+    // use verify admin after verifyToken
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === 'admin';
+      if (!isAdmin) {
+        return res.status(403).send({ message: 'forbidden access' });
+      }
+      next();
+    }
+// Users releted api
+    app.post('/users', async (req, res) => {
+      const user = req.body;
+      // insert email if user doesnt exists: 
+      // you can do this many ways (1. email unique, 2. upsert 3. simple checking)
+      const query = { email: user.email }
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: 'user already exists', insertedId: null })
+      }
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+
+
+
+
     app.get('/allCategory' , async (req,res)=>{
       const searchValue = req.query.search
       // console.log(req.query.search);
@@ -158,12 +213,8 @@ async function run() {
     })
     // Campaign releted api 
     app.get('/campaignAllPeats', async (req,res) =>{ 
-      const query = {pause:false}
-      options = {
-        sort: {date : -1 }
-      };
-      const result = await campaignPeatsDB.find(query,options).toArray()
-      res.send(result)
+      const result = await campaignPeatsDB.find().sort({ date: -1 }).toArray();
+    res.send(result);
     })
     app.patch('/myCampaignUpdate/:id',async (req,res)=>{
       const updateId = req.params.id;
@@ -202,6 +253,7 @@ async function run() {
       const result = await campaignPeatsDB.insertOne(data)
       res.send(result)
     })
+    // Payment releted api 
     
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
