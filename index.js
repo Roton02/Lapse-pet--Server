@@ -141,6 +141,10 @@ async function run() {
       const result = await AllPeatsCategoryDB.find(query, options).toArray();
       res.send(result);
     });
+    app.get("/allCategory/admin", verifyToken,verifyAdmin, async (req, res) => {
+      const result = await AllPeatsCategoryDB.find().toArray();
+      res.send(result);
+    });
     app.get("/allCategory/:id", async (req, res) => {
       const id = req.params.id;
       // console.log(id);
@@ -148,6 +152,12 @@ async function run() {
       const result = await AllPeatsCategoryDB.findOne(query);
       res.send(result);
     });
+    app.delete("/allcategory/admin/delete/:id", verifyToken,verifyAdmin, async(req,res)=>{
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const result = await AllPeatsCategoryDB.deleteOne(query)
+      res.send(result)
+    })
     // ReQuested Page
     app.get("/Adopted/request/:email", async (req, res) => {
       const email = req.params.email;
