@@ -257,6 +257,32 @@ async function run() {
       const result = await AllPeatsCategoryDB.updateOne(query, updateDoc);
       res.send(result);
     });
+    // Admin change status 
+    app.patch("/AdminChangeStatusByAdopted/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          adopted: true,
+        },
+      };
+      const result = await AllPeatsCategoryDB.updateOne(query, updateDoc);
+      res.send(result);
+    });
+    app.patch("/AdminChangeStatusByNotAdopted/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          adopted: false,
+        },
+      };
+      const result = await AllPeatsCategoryDB.updateOne(query, updateDoc);
+      res.send(result);
+    });
+
+
+    // 
     app.post("/AddPet", async (req, res) => {
       const data = req.body;
       const result = await AllPeatsCategoryDB.insertOne(data);
@@ -265,6 +291,17 @@ async function run() {
     // Campaign releted api
     app.get("/campaignAllPeats", async (req, res) => {
       const result = await campaignPeatsDB.find().sort({ date: -1 }).toArray();
+      res.send(result);
+    });
+    app.patch("/Campaign/pause/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          pause: true,
+        },
+      };
+      const result = await campaignPeatsDB.updateOne(query, updateDoc);
       res.send(result);
     });
     app.patch("/myCampaignUpdate/:id", async (req, res) => {
