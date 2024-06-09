@@ -159,14 +159,14 @@ async function run() {
       res.send(result)
     })
     // ReQuested Page
-    app.get("/Adopted/request/:email", async (req, res) => {
+    app.get("/Adopted/request/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { AddedEmail: email, requetsed: true, adopted: false };
       const result = await AdoptedrequestedDB.find(query).toArray();
       res.send(result);
     });
 
-    app.patch("/adopted/requestedAccept/:id/:adoptId", async (req, res) => {
+    app.patch("/adopted/requestedAccept/:id/:adoptId", verifyToken, async (req, res) => {
       console.log("object");
       const id = req.params.id;
       const id2 = req.params.adoptId;
@@ -192,7 +192,7 @@ async function run() {
       res.send(update);
     });
 
-    app.delete("/Adopted/request/:id", async (req, res) => {
+    app.delete("/Adopted/request/:id", verifyToken, async (req, res) => {
       const query = { _id: new ObjectId(req.params.id) };
       const result = await AdoptedrequestedDB.deleteOne(query);
       res.send(result);
@@ -218,7 +218,7 @@ async function run() {
       const result = await AllPeatsCategoryDB.find(query).toArray();
       res.send(result);
     });
-    app.patch("/updateMyaddedPets/:id", async (req, res) => {
+    app.patch("/updateMyaddedPets/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const data = req.body;
       const query = { _id: new ObjectId(id) };
@@ -236,14 +236,14 @@ async function run() {
       const result = await AllPeatsCategoryDB.updateOne(query, updateDoc);
       res.send(result);
     });
-    app.delete("/myAddedDelete/:id", async (req, res) => {
+    app.delete("/myAddedDelete/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const deleteRequest = await AdoptedrequestedDB.deleteMany({ id: id });
       const result = await AllPeatsCategoryDB.deleteOne(query);
       res.send(result);
     });
-    app.patch("/myAddedAdopt/:id/:petId", async (req, res) => {
+    app.patch("/myAddedAdopt/:id/:petId", verifyToken, async (req, res) => {
       const id = req.params.id;
       const petId = req.params.petId;
       const query = { _id: new ObjectId(id) };
@@ -258,7 +258,7 @@ async function run() {
       res.send(result);
     });
     // Admin change status 
-    app.patch("/AdminChangeStatusByAdopted/:id", async (req, res) => {
+    app.patch("/AdminChangeStatusByAdopted/:id", verifyToken,verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const updateDoc = {
@@ -269,7 +269,7 @@ async function run() {
       const result = await AllPeatsCategoryDB.updateOne(query, updateDoc);
       res.send(result);
     });
-    app.patch("/AdminChangeStatusByNotAdopted/:id", async (req, res) => {
+    app.patch("/AdminChangeStatusByNotAdopted/:id", verifyToken,verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const updateDoc = {
@@ -283,17 +283,21 @@ async function run() {
 
 
     // 
-    app.post("/AddPet", async (req, res) => {
+    app.post("/AddPet", verifyToken, async (req, res) => {
       const data = req.body;
       const result = await AllPeatsCategoryDB.insertOne(data);
       res.send(result);
     });
     // Campaign releted api
-    app.get("/campaignAllPeats", async (req, res) => {
+    app.get("/campaignAllPeats",  async (req, res) => {
       const result = await campaignPeatsDB.find().sort({ date: -1 }).toArray();
       res.send(result);
     });
-    app.patch("/Campaign/pause/:id", async (req, res) => {
+    app.get("/campaignAllPeats/admin", verifyToken,verifyAdmin, async (req, res) => {
+      const result = await campaignPeatsDB.find().toArray();
+      res.send(result);
+    });
+    app.patch("/Campaign/pause/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const updateDoc = {
@@ -304,7 +308,18 @@ async function run() {
       const result = await campaignPeatsDB.updateOne(query, updateDoc);
       res.send(result);
     });
-    app.patch("/myCampaignUpdate/:id", async (req, res) => {
+    app.patch("/Campaign/Unpause/:id", verifyToken,verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          pause: false,
+        },
+      };
+      const result = await campaignPeatsDB.updateOne(query, updateDoc);
+      res.send(result);
+    });
+    app.patch("/myCampaignUpdate/:id", verifyToken, async (req, res) => {
       const updateId = req.params.id;
       const Updatedata = req.body;
       console.log("id", updateId);
@@ -322,20 +337,27 @@ async function run() {
       const result = await campaignPeatsDB.updateOne(query, updateDoc);
       res.send(result);
     });
-    app.get("/myAddedCampaign/:email", async (req, res) => {
+    app.get("/myAddedCampaign/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { userEmail: email };
       const result = await campaignPeatsDB.find(query).toArray();
       res.send(result);
     });
-    app.get("/campaignAllPeats/:id", async (req, res) => {
+    app.get("/campaignAllPeats/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       // console.log(id);
       const query = { _id: new ObjectId(id) };
       const result = await campaignPeatsDB.findOne(query);
       res.send(result);
     });
-    app.post("/Donation/campaign", async (req, res) => {
+    app.delete("/ADmin/campaignAllPeats/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      // console.log(id);
+      const query = { _id: new ObjectId(id) };
+      const result = await campaignPeatsDB.deleteOne(query);
+      res.send(result);
+    });
+    app.post("/Donation/campaign", verifyToken, async (req, res) => {
       const data = req.body;
       console.log(data);
       const result = await campaignPeatsDB.insertOne(data);
