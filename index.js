@@ -1,3 +1,4 @@
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const jwt = require("jsonwebtoken");
 const express = require("express");
 const app = express();
@@ -13,6 +14,11 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
+// Log the important environment variables to ensure they are being loaded
+console.log('Stripe Secret Key:', process.env.STRIPE_SECRET_KEY ? 'Loaded' : 'Not Loaded');
+console.log('MongoDB User:', process.env.USER_DB);
+console.log('MongoDB Password:', process.env.USER_PASS);
+
 const uri = `mongodb+srv://${process.env.USER_DB}:${process.env.USER_PASS}@cluster0.mi2xoxt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -26,13 +32,38 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
+    // Connect the client to the server (optional starting in v4.7)
     await client.connect();
+    console.log("Connected to MongoDB");
+
     const userCollection = client.db("LafsePeats").collection("users");
+    const HomeCollection = client.db("LafsePeats").collection("HomeData");
     const BanUsersCollection = client.db("LafsePeats").collection("banusers");
-    const AllPeatsCategoryDB = client.db("LafsePeats") .collection("PeatsAllCategory");
+    const AllPeatsCategoryDB = client.db("LafsePeats").collection("PeatsAllCategory");
     const AdoptedrequestedDB = client.db("LafsePeats").collection("Adoptedrequested");
     const campaignPeatsDB = client.db("LafsePeats").collection("campaignPeats");
+
+    // Payment related
+    // Payment intent
+    app.post('/create-payment-intent', async (req, res) => {
+      try {
+        const { price } = req.body;
+        const amount = parseInt(price * 100);
+
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount,
+          currency: 'usd',
+          payment_method_types: ['card'],
+        });
+
+        res.send({
+          clientSecret: paymentIntent.client_secret,
+        });
+      } catch (error) {
+        console.error("Error creating payment intent:", error);
+        res.status(500).send({ error: "Failed to create payment intent" });
+      }
+    });
 
     // jwt related api
     app.post("/jwt", async (req, res) => {
@@ -74,6 +105,10 @@ async function run() {
 
     app.get("/users", verifyToken,verifyAdmin,  async (req, res) => {
       const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+    app.get("/homeData", async (req, res) => {
+      const result = await HomeCollection.find().toArray();
       res.send(result);
     });
 
@@ -343,7 +378,7 @@ async function run() {
       const result = await campaignPeatsDB.find(query).toArray();
       res.send(result);
     });
-    app.get("/campaignAllPeats/:id", verifyToken, async (req, res) => {
+    app.get("/campaignAllPeats/:id", async (req, res) => {
       const id = req.params.id;
       // console.log(id);
       const query = { _id: new ObjectId(id) };
