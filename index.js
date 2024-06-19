@@ -44,31 +44,7 @@ async function run() {
     const AdoptedrequestedDB = client.db("LafsePeats").collection("Adoptedrequested");
     const campaignPeatsDB = client.db("LafsePeats").collection("campaignPeats");
 
-    // // Payment related
-    // // Payment intent
-    // app.post('/create-payment-intent', async (req, res) => {
-    //   try {
-    //     const { price } = req.body;
-    //     const amount = parseInt(price * 100);
-
-    //     const paymentIntent = await stripe.paymentIntents.create({
-    //       amount: amount,
-    //       currency: 'usd',
-    //       payment_method_types: ['card'],
-    //     });
-
-    //     res.send({
-    //       clientSecret: paymentIntent.client_secret,
-    //     });
-    //   } catch (error) {
-    //     console.error("Error creating payment intent:", error);
-    //     res.status(500).send({ error: "Failed to create payment intent" });
-    //   }
-    // });
-
-     //donation api
-
-
+   //donation api
     // -------------------------------
     app.post('/create-payment-intent', async (req, res) => {
       try {
@@ -86,7 +62,7 @@ async function run() {
           payment_method_types: ['card'],
         });
     
-        console.log('Payment Intent:', paymentIntent);
+        // console.log('Payment Intent:', paymentIntent);
     
         res.send({
           clientSecret: paymentIntent.client_secret,
@@ -433,6 +409,46 @@ async function run() {
       res.send(result);
     });
     // Payment releted api
+    app.patch('/campaigndonateUpdate/:id', async(req,res)=>{
+      const id = req.params.id;
+      const donateDetails = req.body;
+      console.log(donateDetails);
+      const query = {_id : new ObjectId(id)}
+      const options = { upsert: true };
+      const donationAmount = donateDetails.amount / 100;
+      const updateDoc = {
+        $inc: {
+            donatedAmount:donationAmount
+        },
+        $push: {
+            donators: {
+                email: donateDetails.donate_person_email,
+                name: donateDetails.donate_person_name
+            }
+        }
+    };
+    const result = await campaignPeatsDB.updateOne(query, updateDoc, options)
+    })
+
+
+    // app.patch('/campaigndonateUpdate/:id', async (req, res) => {
+    //   const id = req.params.id;
+    //   const donateDetails = req.body;
+  
+    //   const query = { _id: new ObjectId(id) };
+    //   const updateDoc = {
+    //       $inc: {
+    //           donatedAmount: donateDetails.amount
+    //       },
+    //       $push: {
+    //           donators: {
+    //               email: donateDetails.donate_person_email,
+    //               name: donateDetails.donate_person_name
+    //           }
+    //       }
+    //   };
+  
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
