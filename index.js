@@ -388,6 +388,12 @@ async function run() {
       const result = await campaignPeatsDB.find(query).toArray();
       res.send(result);
     });
+    app.get("/myDonatePets/:email", async(req,res)=>{
+      const email = req.params.email;
+      const query = {'donators.email':email}
+      const result = await campaignPeatsDB.find(query).toArray()
+      res.send(result)
+    })
     app.get("/campaignAllPeats/:id", async (req, res) => {
       const id = req.params.id;
       // console.log(id);
@@ -423,32 +429,28 @@ async function run() {
         $push: {
             donators: {
                 email: donateDetails.donate_person_email,
-                name: donateDetails.donate_person_name
+                name: donateDetails.donate_person_name,
+                donate:donateDetails.danateMoney
             }
         }
     };
     const result = await campaignPeatsDB.updateOne(query, updateDoc, options)
     })
+    app.patch('/refund/:id/:email', async (req,res)=>{
+      const id = req.params.id;
+      const email = req.params.email;
+      const refundAmount = req.body.amount;
+      console.log('kocu', id, email, refundAmount);
 
-
-    // app.patch('/campaigndonateUpdate/:id', async (req, res) => {
-    //   const id = req.params.id;
-    //   const donateDetails = req.body;
-  
-    //   const query = { _id: new ObjectId(id) };
-    //   const updateDoc = {
-    //       $inc: {
-    //           donatedAmount: donateDetails.amount
-    //       },
-    //       $push: {
-    //           donators: {
-    //               email: donateDetails.donate_person_email,
-    //               name: donateDetails.donate_person_name
-    //           }
-    //       }
-    //   };
-  
-
+      const query = { _id: new ObjectId(id) };
+    
+      const updateDoc = {
+        $inc: { donatedAmount: -refundAmount }, 
+        $pull: { donators: { email: email } }
+      };
+      const result = await campaignPeatsDB.updateOne(query,updateDoc)
+      res.send(result)
+    })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
