@@ -6,19 +6,42 @@ const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
+const formData = require("form-data");
+const Mailgun = require("mailgun.js");
+const mailgun = new Mailgun(formData);
+
+const mg = mailgun.client({
+  username: "api",
+  key: process.env.MAILGUN_API_KEY
+});
 
 app.use(cors());
 app.use(express.json());
+
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://peat-7aec8.web.app",
+      "https://peat-7aec8.firebaseapp.com",
+      "https://ephemeral-queijadas-e60793.netlify.app/",
+    ],
+  })
+);
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
 // Log the important environment variables to ensure they are being loaded
-console.log('Stripe Secret Key:', process.env.STRIPE_SECRET_KEY ? 'Loaded' : 'Not Loaded');
-console.log('MongoDB User:', process.env.USER_DB);
-console.log('MongoDB Password:', process.env.USER_PASS);
+console.log(
+  "Stripe Secret Key:",
+  process.env.STRIPE_SECRET_KEY ? "Loaded" : "Not Loaded"
+);
+console.log("MongoDB User:", process.env.USER_DB);
+console.log("MongoDB Password:", process.env.USER_PASS);
 
 const uri = `mongodb+srv://${process.env.USER_DB}:${process.env.USER_PASS}@cluster0.mi2xoxt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -34,46 +57,56 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server (optional starting in v4.7)
-    // await client.connect();
-    // console.log("Connected to MongoDB");
+    await client.connect();
+    console.log("Connected to MongoDB");
 
     const userCollection = client.db("LafsePeats").collection("users");
     const HomeCollection = client.db("LafsePeats").collection("HomeData");
     const BanUsersCollection = client.db("LafsePeats").collection("banusers");
-    const AllPeatsCategoryDB = client.db("LafsePeats").collection("PeatsAllCategory");
-    const AdoptedrequestedDB = client.db("LafsePeats").collection("Adoptedrequested");
+    const AllPeatsCategoryDB = client
+      .db("LafsePeats")
+      .collection("PeatsAllCategory");
+    const AdoptedrequestedDB = client
+      .db("LafsePeats")
+      .collection("Adoptedrequested");
     const campaignPeatsDB = client.db("LafsePeats").collection("campaignPeats");
 
-   //donation api
+    //donation api
     // -------------------------------
-    app.post('/create-payment-intent', async (req, res) => {
+    app.post("/create-payment-intent", async (req, res) => {
       try {
         const { donation } = req.body;
         if (!donation) {
-          throw new Error('Donation amount is required');
+          throw new Error("Donation amount is required");
         }
-        
+
         const amount = parseInt(donation * 100);
-        console.log('Amount:', amount);
-    
+        // console.log("Amount:", amount);
+
         const paymentIntent = await stripe.paymentIntents.create({
           amount: amount,
-          currency: 'usd',
-          payment_method_types: ['card'],
+          currency: "usd",
+          payment_method_types: ["card"],
         });
-    
+
         // console.log('Payment Intent:', paymentIntent);
-    
+        mg.messages.create('sandboxb64a4641ed1340f98e3228d5d02d77a8.mailgun.org', {
+          from: "Excited User <mailgun@sandboxb64a4641ed1340f98e3228d5d02d77a8.mailgun.org>",
+          to: ["rph645102@gmail.com"],
+          subject: "Hello",
+          text: "Testing some Mailgun awesomeness!",
+          html: "<h1>Testing some Mailgun awesomeness!</h1>"
+        })
+        .then(msg => console.log(msg)) // logs response data
+        .catch(err => console.log(err)); // logs any error
         res.send({
           clientSecret: paymentIntent.client_secret,
         });
       } catch (error) {
-        console.error('Error creating payment intent:', error.message);
+        console.error("Error creating payment intent:", error.message);
         res.status(500).send({ error: error.message });
       }
     });
-    
-
 
     // jwt related api
     app.post("/jwt", async (req, res) => {
@@ -113,7 +146,7 @@ async function run() {
     };
     // Users releted api
 
-    app.get("/users", verifyToken,verifyAdmin,  async (req, res) => {
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
@@ -122,37 +155,41 @@ async function run() {
       res.send(result);
     });
 
-
-    app.get('/users/admin/:email', verifyToken, async (req, res) => {
+    app.get("/users/admin/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
 
       if (email !== req.decoded.email) {
-        return res.status(403).send({ message: 'forbidden access' })
+        return res.status(403).send({ message: "forbidden access" });
       }
 
       const query = { email: email };
       const user = await userCollection.findOne(query);
       let admin = false;
       if (user) {
-        admin = user?.role === 'admin';
+        admin = user?.role === "admin";
       }
       res.send({ admin });
-    })
+    });
 
     // make admin
-    app.patch("/users/admin/:id",verifyToken, verifyAdmin, async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updatedDoc = {
-        $set: {
-          role: "admin",
-        },
-      };
-      const result = await userCollection.updateOne(filter, updatedDoc);
-      res.send(result);
-    });
-// ban Users api
-    app.post("/users/ban", verifyToken,verifyAdmin, async (req, res) => {
+    app.patch(
+      "/users/admin/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updatedDoc = {
+          $set: {
+            role: "admin",
+          },
+        };
+        const result = await userCollection.updateOne(filter, updatedDoc);
+        res.send(result);
+      }
+    );
+    // ban Users api
+    app.post("/users/ban", verifyToken, verifyAdmin, async (req, res) => {
       const banUser = req.body;
       const result = await BanUsersCollection.insertOne(banUser);
       res.send(result);
@@ -186,10 +223,15 @@ async function run() {
       const result = await AllPeatsCategoryDB.find(query, options).toArray();
       res.send(result);
     });
-    app.get("/allCategory/admin", verifyToken,verifyAdmin, async (req, res) => {
-      const result = await AllPeatsCategoryDB.find().toArray();
-      res.send(result);
-    });
+    app.get(
+      "/allCategory/admin",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const result = await AllPeatsCategoryDB.find().toArray();
+        res.send(result);
+      }
+    );
     app.get("/allCategory/:id", async (req, res) => {
       const id = req.params.id;
       // console.log(id);
@@ -197,12 +239,17 @@ async function run() {
       const result = await AllPeatsCategoryDB.findOne(query);
       res.send(result);
     });
-    app.delete("/allcategory/admin/delete/:id", verifyToken,verifyAdmin, async(req,res)=>{
-      const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
-      const result = await AllPeatsCategoryDB.deleteOne(query)
-      res.send(result)
-    })
+    app.delete(
+      "/allcategory/admin/delete/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await AllPeatsCategoryDB.deleteOne(query);
+        res.send(result);
+      }
+    );
     // ReQuested Page
     app.get("/Adopted/request/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
@@ -211,31 +258,35 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/adopted/requestedAccept/:id/:adoptId", verifyToken, async (req, res) => {
-      console.log("object");
-      const id = req.params.id;
-      const id2 = req.params.adoptId;
-      console.log(id, id2);
-      const query = { _id: new ObjectId(id) };
-      const query2 = { _id: new ObjectId(id2) };
-      const updateAllCategory = {
-        $set: {
-          adopted: true,
-        },
-      };
-      const updateRequest = {
-        $set: {
-          requetsed: false,
-        },
-      };
-      const result = await AllPeatsCategoryDB.updateOne(
-        query2,
-        updateAllCategory
-      );
-      // console.log(result);
-      const update = await AdoptedrequestedDB.updateOne(query, updateRequest);
-      res.send(update);
-    });
+    app.patch(
+      "/adopted/requestedAccept/:id/:adoptId",
+      verifyToken,
+      async (req, res) => {
+        // console.log("object");
+        const id = req.params.id;
+        const id2 = req.params.adoptId;
+        // console.log(id, id2);
+        const query = { _id: new ObjectId(id) };
+        const query2 = { _id: new ObjectId(id2) };
+        const updateAllCategory = {
+          $set: {
+            adopted: true,
+          },
+        };
+        const updateRequest = {
+          $set: {
+            requetsed: false,
+          },
+        };
+        const result = await AllPeatsCategoryDB.updateOne(
+          query2,
+          updateAllCategory
+        );
+        // console.log(result);
+        const update = await AdoptedrequestedDB.updateOne(query, updateRequest);
+        res.send(update);
+      }
+    );
 
     app.delete("/Adopted/request/:id", verifyToken, async (req, res) => {
       const query = { _id: new ObjectId(req.params.id) };
@@ -249,7 +300,7 @@ async function run() {
     });
 
     // Dashborad releted api
-    app.get("/myAdded/", async (req, res) => {
+    app.get("/myAdded", verifyToken, async (req, res) => {
       const id = req.query.id;
       const email = req.query.email;
       // console.log(email,id);
@@ -302,46 +353,60 @@ async function run() {
       const result = await AllPeatsCategoryDB.updateOne(query, updateDoc);
       res.send(result);
     });
-    // Admin change status 
-    app.patch("/AdminChangeStatusByAdopted/:id", verifyToken,verifyAdmin, async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          adopted: true,
-        },
-      };
-      const result = await AllPeatsCategoryDB.updateOne(query, updateDoc);
-      res.send(result);
-    });
-    app.patch("/AdminChangeStatusByNotAdopted/:id", verifyToken,verifyAdmin, async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          adopted: false,
-        },
-      };
-      const result = await AllPeatsCategoryDB.updateOne(query, updateDoc);
-      res.send(result);
-    });
+    // Admin change status
+    app.patch(
+      "/AdminChangeStatusByAdopted/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            adopted: true,
+          },
+        };
+        const result = await AllPeatsCategoryDB.updateOne(query, updateDoc);
+        res.send(result);
+      }
+    );
+    app.patch(
+      "/AdminChangeStatusByNotAdopted/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            adopted: false,
+          },
+        };
+        const result = await AllPeatsCategoryDB.updateOne(query, updateDoc);
+        res.send(result);
+      }
+    );
 
-
-    // 
+    //
     app.post("/AddPet", verifyToken, async (req, res) => {
       const data = req.body;
       const result = await AllPeatsCategoryDB.insertOne(data);
       res.send(result);
     });
     // Campaign releted api
-    app.get("/campaignAllPeats",  async (req, res) => {
+    app.get("/campaignAllPeats", async (req, res) => {
       const result = await campaignPeatsDB.find().sort({ date: -1 }).toArray();
       res.send(result);
     });
-    app.get("/campaignAllPeats/admin", verifyToken,verifyAdmin, async (req, res) => {
-      const result = await campaignPeatsDB.find().toArray();
-      res.send(result);
-    });
+    app.get(
+      "/campaignAllPeats/admin",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const result = await campaignPeatsDB.find().toArray();
+        res.send(result);
+      }
+    );
     app.patch("/Campaign/pause/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -353,21 +418,26 @@ async function run() {
       const result = await campaignPeatsDB.updateOne(query, updateDoc);
       res.send(result);
     });
-    app.patch("/Campaign/Unpause/:id", verifyToken,verifyAdmin, async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          pause: false,
-        },
-      };
-      const result = await campaignPeatsDB.updateOne(query, updateDoc);
-      res.send(result);
-    });
+    app.patch(
+      "/Campaign/Unpause/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            pause: false,
+          },
+        };
+        const result = await campaignPeatsDB.updateOne(query, updateDoc);
+        res.send(result);
+      }
+    );
     app.patch("/myCampaignUpdate/:id", verifyToken, async (req, res) => {
       const updateId = req.params.id;
       const Updatedata = req.body;
-      console.log("id", updateId);
+      // console.log("id", updateId);
       const query = { _id: new ObjectId(updateId) };
       const updateDoc = {
         $set: {
@@ -388,12 +458,12 @@ async function run() {
       const result = await campaignPeatsDB.find(query).toArray();
       res.send(result);
     });
-    app.get("/myDonatePets/:email", async(req,res)=>{
+    app.get("/myDonatePets/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
-      const query = {'donators.email':email}
-      const result = await campaignPeatsDB.find(query).toArray()
-      res.send(result)
-    })
+      const query = { "donators.email": email };
+      const result = await campaignPeatsDB.find(query).toArray();
+      res.send(result);
+    });
     app.get("/campaignAllPeats/:id", async (req, res) => {
       const id = req.params.id;
       // console.log(id);
@@ -401,62 +471,67 @@ async function run() {
       const result = await campaignPeatsDB.findOne(query);
       res.send(result);
     });
-    app.delete("/ADmin/campaignAllPeats/:id", verifyToken, verifyAdmin, async (req, res) => {
-      const id = req.params.id;
-      // console.log(id);
-      const query = { _id: new ObjectId(id) };
-      const result = await campaignPeatsDB.deleteOne(query);
-      res.send(result);
-    });
+    app.delete(
+      "/ADmin/campaignAllPeats/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        // console.log(id);
+        const query = { _id: new ObjectId(id) };
+        const result = await campaignPeatsDB.deleteOne(query);
+        res.send(result);
+      }
+    );
     app.post("/Donation/campaign", verifyToken, async (req, res) => {
       const data = req.body;
-      console.log(data);
+      // console.log(data);
       const result = await campaignPeatsDB.insertOne(data);
       res.send(result);
     });
     // Payment releted api
-    app.patch('/campaigndonateUpdate/:id', async(req,res)=>{
+    app.patch("/campaigndonateUpdate/:id", async (req, res) => {
       const id = req.params.id;
       const donateDetails = req.body;
-      console.log(donateDetails);
-      const query = {_id : new ObjectId(id)}
+      // console.log(donateDetails);
+      const query = { _id: new ObjectId(id) };
       const options = { upsert: true };
       const donationAmount = donateDetails.amount / 100;
       const updateDoc = {
         $inc: {
-            donatedAmount:donationAmount
+          donatedAmount: donationAmount,
         },
         $push: {
-            donators: {
-                email: donateDetails.donate_person_email,
-                name: donateDetails.donate_person_name,
-                donate:donateDetails.danateMoney
-            }
-        }
-    };
-    const result = await campaignPeatsDB.updateOne(query, updateDoc, options)
-    })
-    app.patch('/refund/:id/:email', async (req,res)=>{
+          donators: {
+            email: donateDetails.donate_person_email,
+            name: donateDetails.donate_person_name,
+            donate: donateDetails.danateMoney,
+          },
+        },
+      };
+      const result = await campaignPeatsDB.updateOne(query, updateDoc, options);
+    });
+    app.patch("/refund/:id/:email", verifyToken, async (req, res) => {
       const id = req.params.id;
       const email = req.params.email;
       const refundAmount = req.body.amount;
-      console.log('kocu', id, email, refundAmount);
+      // console.log("kocu", id, email, refundAmount);
 
       const query = { _id: new ObjectId(id) };
-    
+
       const updateDoc = {
-        $inc: { donatedAmount: -refundAmount }, 
-        $pull: { donators: { email: email } }
+        $inc: { donatedAmount: -refundAmount },
+        $pull: { donators: { email: email } },
       };
-      const result = await campaignPeatsDB.updateOne(query,updateDoc)
-      res.send(result)
-    })
+      const result = await campaignPeatsDB.updateOne(query, updateDoc);
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
-    // await client.db("admin").command({ ping: 1 });
-    // console.log(
-    //   "Pinged your deployment. You successfully connected to MongoDB!"
-    // );
+    await client.db("admin").command({ ping: 1 });
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
